@@ -107,18 +107,29 @@
       if (approved && request.type !== 'order') {
         requireThat(availableOrder(order), 'キャンセル済みの注文は承認できません。');
       }
+      // 同じ注文の中で最後に受け付けた数量変更依頼を取得
+      const latestChangeRequest = [...state.requests.values()]
+        .filter(item => item.orderId === order.id && item.type === 'change')
+        .at(-1);
+
+      const isLatestChange = latestChangeRequest?.requestId === request.requestId;
+
       if (approved && request.type === 'change') {
         requireThat(!order.initialFinished, '当初分の製造完了後は注文変更を承認できません。');
-        order.paper = request.paper;
-        order.quantity = Number(request.quantity);
-        state.requests.get(order.originalRequestId).targetQuantity = order.quantity;
-      }
+
+        // 最新の変更依頼だけを注文情報に反映する
+        if (isLatestChange) {
+          order.paper = request.paper;
+          order.quantity = Number(request.quantity);
+          state.requests.get(order.originalRequestId).targetQuantity = order.quantity;
+        }
+      }   
       if (approved && request.type === 'cancel') {
         requireThat(!order.initialFinished, '当初分の製造完了後はキャンセルを承認できません。');
         order.cancelled = true;
       }
       if (approved && request.type === 'order') order.approved = true;
-      if (approved && ['order', 'change'].includes(request.type)) {
+      if (approved && (request.type === 'order' || isLatestChange)) {
         order.dueDate = event.confirmedDueDate || request.dueDate;
       }
       request.answer = event.decision;
