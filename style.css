@@ -61,6 +61,7 @@ dd { margin: 0; white-space: pre-wrap; }
 }
 @media (max-width: 460px) {
   #fields { grid-template-columns: 1fr; }
+  .request-counts { grid-template-columns: 1fr; }
   #csv-types { columns: 1; }
 }
 

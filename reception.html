@@ -53,6 +53,16 @@
 
     <p id="message" role="status" aria-live="polite">CSVの処理結果をここに表示します。</p>
 
+    <section aria-labelledby="pending-requests-title">
+      <h2 id="pending-requests-title">製造への未回答依頼</h2>
+      <div class="request-counts">
+        <p>製造依頼 <strong id="pending-order-count">0件</strong></p>
+        <p>変更依頼 <strong id="pending-change-count">0件</strong></p>
+        <p>キャンセル依頼 <strong id="pending-cancel-count">0件</strong></p>
+      </div>
+      <p class="hint">製造部からの回答CSVを取り込むと、該当する件数が減ります。</p>
+    </section>
+
     <section aria-labelledby="orders-title">
       <h2 id="orders-title">注文一覧 <span id="order-count" class="count"></span></h2>
       <label class="filter-control">
