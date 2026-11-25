@@ -173,17 +173,52 @@
 
   function renderOrders() {
     const list = $('orders');
+    const keyword = $('order-search').value.trim().toLowerCase();
+
     list.replaceChildren();
-    for (const order of [...state.orders.values()].reverse()) {
+
+    const orders = [...state.orders.values()].reverse();
+
+    // 品名または注文IDで検索
+    const filteredOrders = orders.filter(order =>
+      order.product.toLowerCase().includes(keyword) ||
+      order.id.toLowerCase().includes(keyword)
+    );
+
+    for (const order of filteredOrders) {
       const row = element('tr');
-      const values = [order.id, order.product, order.paper, order.quantity + '部', order.dueDate,
-        statusOf(order), order.proofStatus || '—', order.expectedDate || '—',
-        order.delayReason || '—', order.initialFinished || order.goodQuantity ? order.goodQuantity + '部' : '—'];
+      const values = [
+        order.id,
+        order.product,
+        order.paper,
+        order.quantity + '部',
+        order.dueDate,
+        statusOf(order),
+        order.proofStatus || '—',
+        order.expectedDate || '—',
+        order.delayReason || '—',
+        order.initialFinished || order.goodQuantity
+          ? order.goodQuantity + '部'
+          : '—'
+      ];
+
       row.append(...values.map(value => element('td', value)));
       list.append(row);
     }
-    if (!list.children.length) rowMessage(list, 10, '注文がありません。');
-    $('order-count').textContent = state.orders.size + '件';
+
+    if (!filteredOrders.length) {
+      rowMessage(
+        list,
+        10,
+        orders.length ? '該当する注文がありません。' : '注文がありません。'
+      );
+    }
+
+    $('order-count').textContent = orders.length + '件';
+
+    $('search-count').textContent = keyword
+      ? filteredOrders.length + '件の注文が見つかりました。（全' + orders.length + '件）'
+      : '全' + orders.length + '件の注文を表示しています。';
   }
 
   function renderHistory() {
@@ -228,6 +263,16 @@
 
   $('operation').append(...outgoing.map(([type, definition]) => option(type, definition.name)));
   $('operation').addEventListener('change', () => renderForm());
+
+  // 注文検索
+  $('order-search').addEventListener('input', renderOrders);
+
+  // 検索内容のクリア
+  $('clear-search').addEventListener('click', () => {
+    $('order-search').value = '';
+    renderOrders();
+    $('order-search').focus();
+  });
 
   $('entry').addEventListener('submit', event => {
     event.preventDefault();

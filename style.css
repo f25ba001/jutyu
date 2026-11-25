@@ -60,3 +60,33 @@ dd { margin: 0; white-space: pre-wrap; }
   #fields { grid-template-columns: 1fr; }
   #csv-types { columns: 1; }
 }
+
+/* 注文検索 */
+.search-area {
+  margin: 0 0 1rem;
+  padding: .8rem;
+  background: #f5f8f7;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+
+.search-area label {
+  margin-bottom: .4rem;
+}
+
+.search-controls {
+  display: flex;
+  gap: .5rem;
+}
+
+.search-controls input {
+  flex: 1;
+}
+
+.search-controls button {
+  white-space: nowrap;
+}
+
+.search-area .hint {
+  margin-bottom: 0;
+}
