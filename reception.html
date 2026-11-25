@@ -16,7 +16,7 @@
   <main>
     <details class="guide">
       <summary>使い方とCSVの種類</summary>
-      <p>「製造依頼」を記入して書き出し、製造部へCSVを渡します。製造部から返る「依頼回答」CSVを取り込むと、注文の状態が変わります。</p>
+      <p>「製造依頼」を記入して書き出し、製造部へCSVを渡します。製造部が読み込むと「製造依頼受信確認」を返し、営業部で確認できます。受信確認後に「依頼回答」で承認・却下します。</p>
       <p>校正を行う場合は、製造部の校正確認依頼と営業部の校正回答を交換します。製造部は進捗・遅延・完了を必要に応じて書き出し、営業部に渡します。</p>
       <p>データは開いている画面で保持します。閉じる前に台帳を保存し、再開時に開き直してください。</p>
       <ul id="csv-types"></ul>
@@ -55,9 +55,13 @@
 
     <section aria-labelledby="orders-title">
       <h2 id="orders-title">注文一覧 <span id="order-count" class="count"></span></h2>
+      <label class="filter-control">
+        <input id="today-only" type="checkbox">
+        今日が納期の注文のみ表示
+      </label>
       <div class="table-wrap">
         <table aria-labelledby="orders-title">
-          <thead><tr><th scope="col">注文ID</th><th scope="col">品名</th><th scope="col">用紙</th><th scope="col">部数</th><th scope="col">納期</th><th scope="col">状態</th><th scope="col">校正</th><th scope="col">完了見込み</th><th scope="col">遅延理由</th><th scope="col">良品累計</th></tr></thead>
+          <thead><tr><th scope="col">注文ID</th><th scope="col">品名</th><th scope="col">用紙</th><th scope="col">部数</th><th scope="col">納期</th><th scope="col">状態</th><th scope="col">校正</th><th scope="col">完了見込み</th><th scope="col">遅延理由</th><th scope="col">遅延対応</th><th scope="col">良品累計</th></tr></thead>
           <tbody id="orders"></tbody>
         </table>
       </div>
