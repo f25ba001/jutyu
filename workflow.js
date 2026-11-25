@@ -4,6 +4,7 @@
   // 両部署の取り込み・書き出しで共通のCSV仕様。
   const interfaces = {
     order:       { name: '製造依頼', from: 'sales', fields: 'requestId orderId product paper quantity dueDate' },
+    received:    { name: '製造依頼受信確認', from: 'factory', fields: 'requestId orderId receivedAt' },
     change:      { name: '注文変更依頼', from: 'sales', fields: 'requestId orderId paper quantity dueDate reason' },
     cancel:      { name: 'キャンセル依頼', from: 'sales', fields: 'requestId orderId reason' },
     proofReply:  { name: '校正回答', from: 'sales', fields: 'orderId proofId proofDecision comment' },
@@ -24,7 +25,7 @@
   const optionalFields = ['comment', 'confirmedDueDate', 'reason'];
   const positiveFields = ['quantity', 'version'];
   const countFields = ['goodQuantity', 'shortageQuantity'];
-  const dateFields = ['dueDate', 'confirmedDueDate', 'responseDueDate', 'expectedDate', 'completedDate'];
+  const dateFields = ['dueDate', 'confirmedDueDate', 'responseDueDate', 'expectedDate', 'completedDate', 'receivedAt'];
 
   function requireThat(condition, message) {
     if (!condition) throw new Error(message);
@@ -105,13 +106,28 @@
       if (event.type !== 'order') {
         requireThat(availableOrder(order), '承認済みで有効な注文を選んでください。');
       }
-      state.requests.set(event.requestId, { ...event, answer: '', finished: false, targetQuantity: Number(event.quantity || 0) });
+      state.requests.set(event.requestId, {
+        ...event, answer: '', received: false, receivedAt: '', finished: false,
+        targetQuantity: Number(event.quantity || 0)
+      });
+      return;
+    }
+
+    if (event.type === 'received') {
+      requireThat(request && request.orderId === order.id && request.type === 'order',
+        '該当する製造依頼がありません。');
+      requireThat(!request.received, 'この製造依頼は受信確認済みです。');
+      request.received = true;
+      request.receivedAt = event.receivedAt;
       return;
     }
 
     if (event.type === 'reply') {
       requireThat(request && request.orderId === order.id && !request.answer, '該当する未回答の依頼がありません。');
       const approved = event.decision === '承認';
+      if (approved && request.type === 'order') {
+        requireThat(request.received, '承認前に製造部の受信確認が必要です。');
+      }
       if (approved && request.type !== 'order') {
         requireThat(availableOrder(order), 'キャンセル済みの注文は承認できません。');
       }
