@@ -119,6 +119,32 @@
     const formFields = $('fields');
     formFields.replaceChildren();
 
+    if (type === 'order') {
+      const copyLabel = element('label');
+      copyLabel.className = 'copy-source';
+      const copySelect = element('select');
+      copySelect.id = 'copy-order';
+      copySelect.append(option('', 'コピー元を選択（任意）'),
+        ...[...state.orders.values()].reverse().map(item =>
+          option(item.id, item.product + ' · ' + item.quantity + '部 · 納期 ' + item.dueDate)));
+      copyLabel.append(element('span', '前回の注文をコピー'), copySelect);
+      copySelect.addEventListener('change', () => {
+        const source = state.orders.get(copySelect.value);
+        if (!source) return;
+        for (const [field, value] of [
+          ['product', source.product],
+          ['paper', source.paper],
+          ['quantity', String(source.quantity)],
+          ['dueDate', source.dueDate]
+        ]) {
+          const input = formFields.querySelector('[name="' + field + '"]');
+          if (input) input.value = value;
+        }
+        formFields.querySelector('[name="quantity"]').focus();
+      });
+      formFields.append(copyLabel);
+    }
+
     for (const field of definition.fields) {
       if (automaticField(type, field)) continue;
       const label = element('label');
