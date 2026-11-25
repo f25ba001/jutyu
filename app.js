@@ -8,7 +8,8 @@
   const fields = {
     orderId: ['注文ID'], requestId: ['依頼ID'], proofId: ['校正ID'],
     product: ['品名'], paper: ['用紙'], quantity: ['部数', 'number'],
-    dueDate: ['希望納期', 'date'], reason: ['理由'], version: ['版番号', 'number'],
+    dueDate: ['希望納期', 'date'], source: ['受注経路', ['店頭', '電話', 'メール']], 
+    reason: ['理由'], version: ['版番号', 'number'],
     instruction: ['確認事項'], responseDueDate: ['回答期限', 'date'],
     proofDecision: ['校正回答', ['承認', '修正依頼']], comment: ['修正コメント'],
     decision: ['依頼回答', ['承認', '却下']], confirmedDueDate: ['確定納期', 'date'],
@@ -176,13 +177,13 @@
     list.replaceChildren();
     for (const order of [...state.orders.values()].reverse()) {
       const row = element('tr');
-      const values = [order.id, order.product, order.paper, order.quantity + '部', order.dueDate,
+      const values = [order.id, order.product, order.source || '—', order.paper, order.quantity + '部', order.dueDate,
         statusOf(order), order.proofStatus || '—', order.expectedDate || '—',
         order.delayReason || '—', order.initialFinished || order.goodQuantity ? order.goodQuantity + '部' : '—'];
       row.append(...values.map(value => element('td', value)));
       list.append(row);
     }
-    if (!list.children.length) rowMessage(list, 10, '注文がありません。');
+    if (!list.children.length) rowMessage(list, 11, '該当する注文がありません。');
     $('order-count').textContent = state.orders.size + '件';
   }
 

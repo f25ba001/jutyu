@@ -3,7 +3,7 @@
 
   // 両部署の取り込み・書き出しで共通のCSV仕様。
   const interfaces = {
-    order:       { name: '製造依頼', from: 'sales', fields: 'requestId orderId product paper quantity dueDate' },
+    order:       { name: '製造依頼', from: 'sales', fields: 'requestId orderId product paper quantity dueDate source' },
     change:      { name: '注文変更依頼', from: 'sales', fields: 'requestId orderId paper quantity dueDate reason' },
     cancel:      { name: 'キャンセル依頼', from: 'sales', fields: 'requestId orderId reason' },
     proofReply:  { name: '校正回答', from: 'sales', fields: 'orderId proofId proofDecision comment' },
@@ -63,6 +63,14 @@
       requireThat(['承認', '修正依頼'].includes(event.proofDecision), '校正回答が不正です。');
       requireThat(event.proofDecision !== '修正依頼' || event.comment.trim(), '修正内容を入力してください。');
     }
+
+    if (event.type === 'order') {
+      requireThat(
+        ['店頭', '電話', 'メール'].includes(event.source),
+        '受注経路を選択してください。'
+      );
+    }
+
     if (event.type === 'progress') {
       requireThat(stages.includes(event.stage), '工程が不正です。');
       requireThat(/^\d{4}-\d{2}-\d{2}T/.test(event.updatedAt) &&
@@ -85,7 +93,7 @@
       state.orders.set(event.orderId, {
         id: event.orderId, originalRequestId: event.requestId, product: event.product,
         paper: event.paper, quantity: Number(event.quantity), dueDate: event.dueDate,
-        approved: false, cancelled: false, progress: '', progressAt: '',
+        source: event.source, approved: false, cancelled: false, progress: '', progressAt: '',
         expectedDate: '', delayReason: '', goodQuantity: 0, initialFinished: false, proofStatus: ''
       });
     } else {
