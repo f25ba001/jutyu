@@ -49,6 +49,8 @@ td { overflow-wrap: anywhere; }
 td:first-child, td:last-child { min-width: 5rem; }
 .empty { text-align: center; padding: 1rem; color: #486062; }
 .count { margin-left: .6rem; color: #486062; font-size: .9rem; font-weight: normal; }
+.filter-control { display: flex; align-items: center; width: fit-content; gap: .45rem; margin-bottom: .7rem; }
+.filter-control input { width: 1.1rem; height: 1.1rem; margin: 0; }
 summary { cursor: pointer; }
 dl { display: grid; grid-template-columns: max-content minmax(6rem, 1fr); gap: .15rem .65rem; margin: .5rem 0 0; }
 dd { margin: 0; white-space: pre-wrap; }
