@@ -279,11 +279,29 @@
       !todayOnly || order.dueDate === localDate());
     for (const order of visibleOrders.reverse()) {
       const row = element('tr');
-      const values = [order.id, order.product, order.paper, order.quantity + '部', order.dueDate,
+
+      const copyButton = element('button', order.id);
+      copyButton.type = 'button';
+      copyButton.className = 'copy-order-id';
+      copyButton.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(order.id);
+          copyButton.textContent = 'コピーしました！';
+          setTimeout(() => {
+            copyButton.textContent = order.id;
+          }, 1200);
+        } catch {
+          alert('コピーに失敗しました。');
+        }
+      });
+
+      const values = [order.product, order.paper, order.quantity + '部', order.dueDate,
         statusOf(order), order.proofStatus || '—', order.expectedDate || '—',
         order.delayReason || '—', order.initialFinished || order.goodQuantity ? order.goodQuantity + '部' : '—'];
-      row.append(...values.map(value => element('td', value)));
-      row.insertBefore(delayFollowupCell(order), row.lastChild);
+      const idCell = element('td');
+      idCell.append(copyButton);
+
+      row.append(idCell, ...values.map(value => element('td', value)));
       list.append(row);
     }
     if (!list.children.length) {
