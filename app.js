@@ -273,6 +273,8 @@
 
   function renderOrders() {
     const list = $('orders');
+    const keyword = $('order-search').value.trim().toLowerCase();
+
     list.replaceChildren();
     const todayOnly = $('today-only').checked;
     const visibleOrders = [...state.orders.values()].filter(order =>
@@ -353,6 +355,16 @@
   $('operation').append(...outgoing.map(([type, definition]) => option(type, definition.name)));
   $('operation').addEventListener('change', () => renderForm());
   $('today-only').addEventListener('change', renderOrders);
+
+  // 注文検索
+  $('order-search').addEventListener('input', renderOrders);
+
+  // 検索内容のクリア
+  $('clear-search').addEventListener('click', () => {
+    $('order-search').value = '';
+    renderOrders();
+    $('order-search').focus();
+  });
 
   $('entry').addEventListener('submit', event => {
     event.preventDefault();
