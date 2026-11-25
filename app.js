@@ -85,6 +85,17 @@
       (type === 'proof' && field === 'proofId');
   }
 
+  // 全角数字・全角ハイフンなどを半角にそろえる(数値欄・日付欄の入力用)
+  function toHalfWidth(value) {
+    return String(value)
+      .replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+      .replace(/[－ー−‐]/g, '-')
+      .trim();
+  }
+
+  const numericFields = ['quantity', 'version', 'goodQuantity', 'shortageQuantity'];
+
+
   function inputFor(type, field, order) {
     const [, kind] = fields[field];
     if (field === 'orderId') {
@@ -96,11 +107,20 @@
 
     const input = element(field === 'comment' || field === 'instruction' ? 'textarea' : 'input');
     input.name = field;
-    if (input.tagName === 'INPUT') input.type = kind || 'text';
-    if (input.type === 'number') {
-      input.min = ['goodQuantity', 'shortageQuantity'].includes(field) ? '0' : '1';
-      input.step = '1';
+    if (input.tagName === 'INPUT') {
+      if (numericFields.includes(field)) {
+        input.type = 'text';
+        input.inputMode = 'numeric';
+        input.pattern = '[0-9０-９]+';
+        input.title = '半角または全角の数字で入力してください';
+      } else {
+        input.type = kind || 'text';
+      }
     }
+    // if (input.type === 'number') {
+    //  input.min = ['goodQuantity', 'shortageQuantity'].includes(field) ? '0' : '1';
+    //  input.step = '1';
+    //}
     if (field === 'completedDate') input.value = localDate();
     if (field === 'version') {
       const last = [...state.proofs.values()].filter(proof => order && proof.orderId === order.id).at(-1);
@@ -233,6 +253,9 @@
     event.preventDefault();
     const type = $('operation').value;
     const data = Object.fromEntries(new FormData($('entry')));
+    for (const field of numericFields) {
+      if (typeof data[field] === 'string') data[field] = toHalfWidth(data[field]);
+    }
     const item = { eventId: identifier('EV'), type, ...data };
     if (type === 'order') item.orderId = identifier('ORD');
     if (['order', 'change', 'cancel', 'additional'].includes(type)) item.requestId = identifier('REQ');
