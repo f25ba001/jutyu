@@ -186,6 +186,16 @@
     $('order-count').textContent = state.orders.size + '件';
   }
 
+  function renderPendingRequests() {
+    const counts = { order: 0, change: 0, cancel: 0 };
+    for (const request of state.requests.values()) {
+      if (Object.hasOwn(counts, request.type) && !request.answer) counts[request.type]++;
+    }
+    $('pending-order-count').textContent = counts.order + '件';
+    $('pending-change-count').textContent = counts.change + '件';
+    $('pending-cancel-count').textContent = counts.cancel + '件';
+  }
+
   function renderHistory() {
     const list = $('history');
     list.replaceChildren();
@@ -221,6 +231,7 @@
 
   function refresh() {
     state = workflow.buildState(events);
+    renderPendingRequests();
     renderOrders();
     renderHistory();
     renderForm();
