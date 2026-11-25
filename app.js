@@ -10,6 +10,7 @@
     product: ['品名'], paper: ['用紙'], quantity: ['部数', 'number'],
     dueDate: ['希望納期', 'date'], reason: ['理由'], version: ['版番号', 'number'],
     instruction: ['確認事項'], responseDueDate: ['回答期限', 'date'],
+    receivedAt: ['受信日', 'date'],
     proofDecision: ['校正回答', ['承認', '修正依頼']], comment: ['修正コメント'],
     decision: ['依頼回答', ['承認', '却下']], confirmedDueDate: ['確定納期', 'date'],
     stage: ['工程', workflow.stages], expectedDate: ['完了見込み日', 'date'],
@@ -68,7 +69,8 @@
   function requestChoices(type, order) {
     return [...state.requests.values()]
       .filter(request => order && request.orderId === order.id)
-      .filter(request => type === 'reply' ? !request.answer :
+      .filter(request => type === 'received' ? request.type === 'order' && !request.received :
+        type === 'reply' ? !request.answer :
         ['order', 'additional'].includes(request.type) && request.answer === '承認' && !request.finished)
       .map(request => [request.requestId, workflow.interfaces[request.type].name + ' · ' +
         (type === 'finish' ? request.targetQuantity + '部 · ' : '') + request.requestId]);
@@ -81,6 +83,7 @@
 
   function automaticField(type, field) {
     return field === 'updatedAt' || (type === 'order' && field === 'orderId') ||
+      (type === 'received' && field === 'receivedAt') ||
       (['order', 'change', 'cancel', 'additional'].includes(type) && field === 'requestId') ||
       (type === 'proof' && field === 'proofId');
   }
@@ -88,7 +91,8 @@
   function inputFor(type, field, order) {
     const [, kind] = fields[field];
     if (field === 'orderId') {
-      return select(field, orderChoices(type).map(item => [item.id, item.product + ' · ' + item.id]));
+      return select(field, orderChoices(type).map(item =>
+        [item.id, item.product + ' · ' + item.quantity + '部 · 納期 ' + item.dueDate + ' · ' + item.id]));
     }
     if (field === 'requestId') return select(field, requestChoices(type, order));
     if (field === 'proofId') return select(field, proofChoices(order));
@@ -118,6 +122,32 @@
     const order = state.orders.get(selectedOrder);
     const formFields = $('fields');
     formFields.replaceChildren();
+
+    if (type === 'order') {
+      const copyLabel = element('label');
+      copyLabel.className = 'copy-source';
+      const copySelect = element('select');
+      copySelect.id = 'copy-order';
+      copySelect.append(option('', 'コピー元を選択（任意）'),
+        ...[...state.orders.values()].reverse().map(item =>
+          option(item.id, item.product + ' · ' + item.quantity + '部 · 納期 ' + item.dueDate)));
+      copyLabel.append(element('span', '前回の注文をコピー'), copySelect);
+      copySelect.addEventListener('change', () => {
+        const source = state.orders.get(copySelect.value);
+        if (!source) return;
+        for (const [field, value] of [
+          ['product', source.product],
+          ['paper', source.paper],
+          ['quantity', String(source.quantity)],
+          ['dueDate', source.dueDate]
+        ]) {
+          const input = formFields.querySelector('[name="' + field + '"]');
+          if (input) input.value = value;
+        }
+        formFields.querySelector('[name="quantity"]').focus();
+      });
+      formFields.append(copyLabel);
+    }
 
     for (const field of definition.fields) {
       if (automaticField(type, field)) continue;
@@ -157,7 +187,11 @@
   function statusOf(order) {
     const request = state.requests.get(order.originalRequestId);
     if (order.cancelled) return 'キャンセル済み';
-    if (!order.approved) return request.answer === '却下' ? '製造依頼却下' : '製造承認待ち';
+    if (!order.approved) {
+      if (request.answer === '却下') return '製造依頼却下';
+      if (request.received) return '製造部受信済み・承認待ち';
+      return '製造部受信待ち';
+    }
     if (order.initialFinished) return order.goodQuantity < order.quantity ? '完了・不足あり' : '完了';
     return order.progress || '製造承認済み';
   }
@@ -176,49 +210,40 @@
     const keyword = $('order-search').value.trim().toLowerCase();
 
     list.replaceChildren();
-
-    const orders = [...state.orders.values()].reverse();
-
-    // 品名または注文IDで検索
-    const filteredOrders = orders.filter(order =>
-      order.product.toLowerCase().includes(keyword) ||
-      order.id.toLowerCase().includes(keyword)
-    );
-
-    for (const order of filteredOrders) {
+    const todayOnly = $('today-only').checked;
+    const visibleOrders = [...state.orders.values()].filter(order =>
+      !todayOnly || order.dueDate === localDate());
+    for (const order of visibleOrders.reverse()) {
       const row = element('tr');
-      const values = [
-        order.id,
-        order.product,
-        order.paper,
-        order.quantity + '部',
-        order.dueDate,
-        statusOf(order),
-        order.proofStatus || '—',
-        order.expectedDate || '—',
-        order.delayReason || '—',
-        order.initialFinished || order.goodQuantity
-          ? order.goodQuantity + '部'
-          : '—'
-      ];
 
-      row.append(...values.map(value => element('td', value)));
+      const copyButton = element('button', order.id);
+      copyButton.type = 'button';
+      copyButton.className = 'copy-order-id';
+      copyButton.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(order.id);
+          copyButton.textContent = 'コピーしました！';
+          setTimeout(() => {
+            copyButton.textContent = order.id;
+          }, 1200);
+        } catch {
+          alert('コピーに失敗しました。');
+        }
+      });
+
+      const values = [order.product, order.paper, order.quantity + '部', order.dueDate,
+        statusOf(order), order.proofStatus || '—', order.expectedDate || '—',
+        order.delayReason || '—', order.initialFinished || order.goodQuantity ? order.goodQuantity + '部' : '—'];
+      const idCell = element('td');
+      idCell.append(copyButton);
+
+      row.append(idCell, ...values.map(value => element('td', value)));
       list.append(row);
     }
-
-    if (!filteredOrders.length) {
-      rowMessage(
-        list,
-        10,
-        orders.length ? '該当する注文がありません。' : '注文がありません。'
-      );
+    if (!list.children.length) {
+      rowMessage(list, 10, todayOnly ? '今日が納期の注文はありません。' : '注文がありません。');
     }
-
-    $('order-count').textContent = orders.length + '件';
-
-    $('search-count').textContent = keyword
-      ? filteredOrders.length + '件の注文が見つかりました。（全' + orders.length + '件）'
-      : '全' + orders.length + '件の注文を表示しています。';
+    $('order-count').textContent = visibleOrders.length + '件';
   }
 
   function renderHistory() {
@@ -263,6 +288,7 @@
 
   $('operation').append(...outgoing.map(([type, definition]) => option(type, definition.name)));
   $('operation').addEventListener('change', () => renderForm());
+  $('today-only').addEventListener('change', renderOrders);
 
   // 注文検索
   $('order-search').addEventListener('input', renderOrders);
@@ -283,6 +309,7 @@
     if (['order', 'change', 'cancel', 'additional'].includes(type)) item.requestId = identifier('REQ');
     if (type === 'proof') item.proofId = identifier('PRF');
     if (type === 'progress') item.updatedAt = new Date().toISOString();
+    if (type === 'received') item.receivedAt = localDate();
 
     try {
       events = workflow.mergeEvents(events, [item]).events;
