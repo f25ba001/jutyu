@@ -49,6 +49,12 @@ td { overflow-wrap: anywhere; }
 td:first-child, td:last-child { min-width: 5rem; }
 .empty { text-align: center; padding: 1rem; color: #486062; }
 .count { margin-left: .6rem; color: #486062; font-size: .9rem; font-weight: normal; }
+.delay-followup { display: grid; gap: .5rem; min-width: 13rem; margin-top: .6rem; }
+.delay-followup label { font-size: .85rem; }
+.delay-followup label:first-child { display: flex; align-items: center; gap: .4rem; }
+.delay-followup input[type="checkbox"] { width: auto; }
+.delay-followup textarea { min-height: 3.5rem; }
+.delay-followup button { white-space: nowrap; }
 summary { cursor: pointer; }
 dl { display: grid; grid-template-columns: max-content minmax(6rem, 1fr); gap: .15rem .65rem; margin: .5rem 0 0; }
 dd { margin: 0; white-space: pre-wrap; }
