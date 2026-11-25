@@ -174,7 +174,17 @@
   function renderOrders() {
     const list = $('orders');
     list.replaceChildren();
-    for (const order of [...state.orders.values()].reverse()) {
+    
+    const orders = [...state.orders.values()].reverse();
+
+    // 営業側では、製造承認待ちの注文だけを表示する
+    const visibleOrders = department === 'sales'
+      ? orders.filter(order => statusOf(order) === '製造承認待ち')
+      : orders;
+
+    for (const order of visibleOrders) {
+
+
       const row = element('tr');
       const values = [order.id, order.product, order.paper, order.quantity + '部', order.dueDate,
         statusOf(order), order.proofStatus || '—', order.expectedDate || '—',
@@ -182,8 +192,10 @@
       row.append(...values.map(value => element('td', value)));
       list.append(row);
     }
-    if (!list.children.length) rowMessage(list, 10, '注文がありません。');
-    $('order-count').textContent = state.orders.size + '件';
+    if (!list.children.length) {
+      rowMessage(list, 10, '製造からの回答待ちの注文はありません。');
+    }
+    $('order-count').textContent = visibleOrders.length + '件';
   }
 
   function renderHistory() {
