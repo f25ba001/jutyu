@@ -8,6 +8,7 @@
     definition.from === department && !definition.internal);
   const fields = {
     orderId: ['注文ID'], requestId: ['依頼ID'], proofId: ['校正ID'],
+    priority: ['優先区分', ['通常', '特急']],
     product: ['品名'], paper: ['用紙'], quantity: ['部数', 'number'],
     dueDate: ['希望納期', 'date'], source: ['受注経路', ['店頭', '電話', 'メール']], 
     reason: ['理由'], version: ['版番号', 'number'],
@@ -98,7 +99,11 @@
     }
     if (field === 'requestId') return select(field, requestChoices(type, order));
     if (field === 'proofId') return select(field, proofChoices(order));
-    if (Array.isArray(kind)) return select(field, kind.map(value => [value, value]));
+    if (Array.isArray(kind)) {
+      const input = select(field, kind.map(value => [value, value]));
+      if (field === 'priority') input.value = '通常';
+      return input;
+    }
 
     const input = element(field === 'comment' || field === 'instruction' ? 'textarea' : 'input');
     input.name = field;
