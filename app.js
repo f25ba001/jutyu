@@ -4,7 +4,8 @@
   const workflow = PrintWorkflow;
   const department = document.body.dataset.department;
   const $ = id => document.getElementById(id);
-  const outgoing = Object.entries(workflow.interfaces).filter(([, definition]) => definition.from === department);
+  const outgoing = Object.entries(workflow.interfaces).filter(([, definition]) =>
+    definition.from === department && !definition.internal);
   const fields = {
     orderId: ['注文ID'], requestId: ['依頼ID'], proofId: ['校正ID'],
     product: ['品名'], paper: ['用紙'], quantity: ['部数', 'number'],
@@ -205,6 +206,71 @@
     tableBody.append(row);
   }
 
+  function delayFollowupCell(order) {
+    if (!order.delayReason) return element('td', '—');
+
+    const cell = element('td');
+    const details = element('details');
+    const summary = element('summary', '顧客連絡: ' +
+      (order.customerContacted ? '連絡済み' : '未連絡') + ' · 申し送り ' +
+      order.delayFollowups.length + '件');
+    details.append(summary);
+
+    for (const followup of order.delayFollowups) {
+      const note = element('p');
+      note.append(element('strong', followup.owner + ' · ' + followup.updatedAt.slice(0, 10)),
+        document.createElement('br'), element('span', followup.handoff));
+      details.append(note);
+    }
+
+    const form = element('form');
+    form.className = 'delay-followup';
+    const contactedLabel = element('label');
+    const contacted = element('input');
+    contacted.type = 'checkbox';
+    contacted.name = 'customerContacted';
+    contacted.checked = order.customerContacted;
+    contactedLabel.append(contacted, element('span', '顧客へ連絡済み'));
+
+    const ownerLabel = element('label');
+    const owner = element('input');
+    owner.name = 'owner';
+    owner.required = true;
+    owner.placeholder = '担当者名';
+    ownerLabel.append(element('span', '担当者'), owner);
+
+    const handoffLabel = element('label');
+    const handoff = element('textarea');
+    handoff.name = 'handoff';
+    handoff.required = true;
+    handoff.placeholder = '顧客への連絡内容や次の対応';
+    handoffLabel.append(element('span', '申し送り'), handoff);
+
+    const save = element('button', '申し送りを記録');
+    save.type = 'submit';
+    form.append(contactedLabel, ownerLabel, handoffLabel, save);
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      const values = Object.fromEntries(new FormData(form));
+      const item = {
+        eventId: identifier('EV'), type: 'delayFollowup', orderId: order.id,
+        owner: values.owner, handoff: values.handoff,
+        customerContacted: contacted.checked ? '連絡済み' : '未連絡',
+        updatedAt: new Date().toISOString()
+      };
+      try {
+        events = workflow.mergeEvents(events, [item]).events;
+        refresh();
+        show(order.product + 'の遅延対応を記録しました。');
+      } catch (error) {
+        show(error.message, true);
+      }
+    });
+    details.append(form);
+    cell.append(details);
+    return cell;
+  }
+
   function renderOrders() {
     const list = $('orders');
     list.replaceChildren();
@@ -261,7 +327,7 @@
       const detailCell = element('td');
       detailCell.append(detail);
       const actionCell = element('td');
-      if (sent) {
+      if (sent && !definition.internal) {
         const button = element('button', 'CSVを書き出す');
         button.type = 'button';
         button.className = 'secondary';
@@ -270,7 +336,7 @@
       } else {
         actionCell.textContent = '—';
       }
-      row.append(element('td', sent ? '送信側' : '受信側'), element('td', definition.name),
+      row.append(element('td', definition.internal ? '社内' : sent ? '送信側' : '受信側'), element('td', definition.name),
         element('td', event.orderId), detailCell, actionCell);
       list.append(row);
     }
@@ -352,6 +418,7 @@
 
   const guidance = $('csv-types');
   for (const [type, definition] of Object.entries(workflow.interfaces)) {
+    if (definition.internal) continue;
     const item = element('li', (definition.from === department ? '書き出し' : '取り込み') + ' · ' +
       definition.name + '（' + type + '）');
     guidance.append(item);
