@@ -90,7 +90,8 @@
   function inputFor(type, field, order) {
     const [, kind] = fields[field];
     if (field === 'orderId') {
-      return select(field, orderChoices(type).map(item => [item.id, item.product + ' · ' + item.id]));
+      return select(field, orderChoices(type).map(item =>
+        [item.id, item.product + ' · ' + item.quantity + '部 · 納期 ' + item.dueDate + ' · ' + item.id]));
     }
     if (field === 'requestId') return select(field, requestChoices(type, order));
     if (field === 'proofId') return select(field, proofChoices(order));
@@ -241,7 +242,10 @@
   function renderOrders() {
     const list = $('orders');
     list.replaceChildren();
-    for (const order of [...state.orders.values()].reverse()) {
+    const todayOnly = $('today-only').checked;
+    const visibleOrders = [...state.orders.values()].filter(order =>
+      !todayOnly || order.dueDate === localDate());
+    for (const order of visibleOrders.reverse()) {
       const row = element('tr');
       const values = [order.id, order.product, order.paper, order.quantity + '部', order.dueDate,
         statusOf(order), order.proofStatus || '—', order.expectedDate || '—',
@@ -250,8 +254,10 @@
       row.insertBefore(delayFollowupCell(order), row.lastChild);
       list.append(row);
     }
-    if (!list.children.length) rowMessage(list, 11, '注文がありません。');
-    $('order-count').textContent = state.orders.size + '件';
+    if (!list.children.length) {
+      rowMessage(list, 10, todayOnly ? '今日が納期の注文はありません。' : '注文がありません。');
+    }
+    $('order-count').textContent = visibleOrders.length + '件';
   }
 
   function renderHistory() {
@@ -296,6 +302,7 @@
 
   $('operation').append(...outgoing.map(([type, definition]) => option(type, definition.name)));
   $('operation').addEventListener('change', () => renderForm());
+  $('today-only').addEventListener('change', renderOrders);
 
   $('entry').addEventListener('submit', event => {
     event.preventDefault();
