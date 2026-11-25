@@ -10,6 +10,7 @@
     product: ['品名'], paper: ['用紙'], quantity: ['部数', 'number'],
     dueDate: ['希望納期', 'date'], reason: ['理由'], version: ['版番号', 'number'],
     instruction: ['確認事項'], responseDueDate: ['回答期限', 'date'],
+    receivedAt: ['受信日', 'date'],
     proofDecision: ['校正回答', ['承認', '修正依頼']], comment: ['修正コメント'],
     decision: ['依頼回答', ['承認', '却下']], confirmedDueDate: ['確定納期', 'date'],
     stage: ['工程', workflow.stages], expectedDate: ['完了見込み日', 'date'],
@@ -68,7 +69,8 @@
   function requestChoices(type, order) {
     return [...state.requests.values()]
       .filter(request => order && request.orderId === order.id)
-      .filter(request => type === 'reply' ? !request.answer :
+      .filter(request => type === 'received' ? request.type === 'order' && !request.received :
+        type === 'reply' ? !request.answer :
         ['order', 'additional'].includes(request.type) && request.answer === '承認' && !request.finished)
       .map(request => [request.requestId, workflow.interfaces[request.type].name + ' · ' +
         (type === 'finish' ? request.targetQuantity + '部 · ' : '') + request.requestId]);
@@ -81,6 +83,7 @@
 
   function automaticField(type, field) {
     return field === 'updatedAt' || (type === 'order' && field === 'orderId') ||
+      (type === 'received' && field === 'receivedAt') ||
       (['order', 'change', 'cancel', 'additional'].includes(type) && field === 'requestId') ||
       (type === 'proof' && field === 'proofId');
   }
@@ -157,7 +160,11 @@
   function statusOf(order) {
     const request = state.requests.get(order.originalRequestId);
     if (order.cancelled) return 'キャンセル済み';
-    if (!order.approved) return request.answer === '却下' ? '製造依頼却下' : '製造承認待ち';
+    if (!order.approved) {
+      if (request.answer === '却下') return '製造依頼却下';
+      if (request.received) return '製造部受信済み・承認待ち';
+      return '製造部受信待ち';
+    }
     if (order.initialFinished) return order.goodQuantity < order.quantity ? '完了・不足あり' : '完了';
     return order.progress || '製造承認済み';
   }
@@ -238,6 +245,7 @@
     if (['order', 'change', 'cancel', 'additional'].includes(type)) item.requestId = identifier('REQ');
     if (type === 'proof') item.proofId = identifier('PRF');
     if (type === 'progress') item.updatedAt = new Date().toISOString();
+    if (type === 'received') item.receivedAt = localDate();
 
     try {
       events = workflow.mergeEvents(events, [item]).events;
