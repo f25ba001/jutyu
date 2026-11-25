@@ -7,6 +7,7 @@
   const outgoing = Object.entries(workflow.interfaces).filter(([, definition]) => definition.from === department);
   const fields = {
     orderId: ['注文ID'], requestId: ['依頼ID'], proofId: ['校正ID'],
+    priority: ['優先区分', ['通常', '特急']],
     product: ['品名'], paper: ['用紙'], quantity: ['部数', 'number'],
     dueDate: ['希望納期', 'date'], reason: ['理由'], version: ['版番号', 'number'],
     instruction: ['確認事項'], responseDueDate: ['回答期限', 'date'],
@@ -88,11 +89,16 @@
   function inputFor(type, field, order) {
     const [, kind] = fields[field];
     if (field === 'orderId') {
-      return select(field, orderChoices(type).map(item => [item.id, item.product + ' · ' + item.id]));
+      return select(field, orderChoices(type).map(item =>
+        [item.id, item.product + ' · ' + (item.priority || '通常') + ' · ' + item.id]));
     }
     if (field === 'requestId') return select(field, requestChoices(type, order));
     if (field === 'proofId') return select(field, proofChoices(order));
-    if (Array.isArray(kind)) return select(field, kind.map(value => [value, value]));
+    if (Array.isArray(kind)) {
+      const input = select(field, kind.map(value => [value, value]));
+      if (field === 'priority') input.value = '通常';
+      return input;
+    }
 
     const input = element(field === 'comment' || field === 'instruction' ? 'textarea' : 'input');
     input.name = field;
@@ -176,13 +182,14 @@
     list.replaceChildren();
     for (const order of [...state.orders.values()].reverse()) {
       const row = element('tr');
-      const values = [order.id, order.product, order.paper, order.quantity + '部', order.dueDate,
+      const values = [order.id, order.priority === '特急' ? '特急' : '通常', order.product,
+        order.paper, order.quantity + '部', order.dueDate,
         statusOf(order), order.proofStatus || '—', order.expectedDate || '—',
         order.delayReason || '—', order.initialFinished || order.goodQuantity ? order.goodQuantity + '部' : '—'];
       row.append(...values.map(value => element('td', value)));
       list.append(row);
     }
-    if (!list.children.length) rowMessage(list, 10, '注文がありません。');
+    if (!list.children.length) rowMessage(list, 11, '注文がありません。');
     $('order-count').textContent = state.orders.size + '件';
   }
 
