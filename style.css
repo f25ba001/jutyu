@@ -60,3 +60,12 @@ dd { margin: 0; white-space: pre-wrap; }
   #fields { grid-template-columns: 1fr; }
   #csv-types { columns: 1; }
 }
+
+.copy-order-id {
+  border: none;
+  background: none;
+  color: #2563eb;
+  cursor: pointer;
+  text-decoration: underline;
+  font: inherit;
+}
