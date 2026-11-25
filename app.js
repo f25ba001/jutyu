@@ -9,7 +9,8 @@
   const fields = {
     orderId: ['注文ID'], requestId: ['依頼ID'], proofId: ['校正ID'],
     product: ['品名'], paper: ['用紙'], quantity: ['部数', 'number'],
-    dueDate: ['希望納期', 'date'], reason: ['理由'], version: ['版番号', 'number'],
+    dueDate: ['希望納期', 'date'], source: ['受注経路', ['店頭', '電話', 'メール']], 
+    reason: ['理由'], version: ['版番号', 'number'],
     instruction: ['確認事項'], responseDueDate: ['回答期限', 'date'],
     receivedAt: ['受信日', 'date'],
     proofDecision: ['校正回答', ['承認', '修正依頼']], comment: ['修正コメント'],

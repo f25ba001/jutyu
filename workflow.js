@@ -65,6 +65,14 @@
       requireThat(['承認', '修正依頼'].includes(event.proofDecision), '校正回答が不正です。');
       requireThat(event.proofDecision !== '修正依頼' || event.comment.trim(), '修正内容を入力してください。');
     }
+
+    if (event.type === 'order') {
+      requireThat(
+        ['店頭', '電話', 'メール'].includes(event.source),
+        '受注経路を選択してください。'
+      );
+    }
+
     if (event.type === 'progress') {
       requireThat(stages.includes(event.stage), '工程が不正です。');
       requireThat(/^\d{4}-\d{2}-\d{2}T/.test(event.updatedAt) &&
