@@ -3,7 +3,8 @@
 
   // 両部署の取り込み・書き出しで共通のCSV仕様。
   const interfaces = {
-    order:       { name: '製造依頼', from: 'sales', fields: 'requestId orderId product paper quantity dueDate source' },
+    order:       { name: '製造依頼', from: 'sales', fields: 'requestId orderId product paper quantity dueDate' },
+    received:    { name: '製造依頼受信確認', from: 'factory', fields: 'requestId orderId receivedAt' },
     change:      { name: '注文変更依頼', from: 'sales', fields: 'requestId orderId paper quantity dueDate reason' },
     cancel:      { name: 'キャンセル依頼', from: 'sales', fields: 'requestId orderId reason' },
     proofReply:  { name: '校正回答', from: 'sales', fields: 'orderId proofId proofDecision comment' },
@@ -12,6 +13,7 @@
     proof:       { name: '校正確認依頼', from: 'factory', fields: 'orderId proofId version instruction responseDueDate' },
     progress:    { name: '製造進捗通知', from: 'factory', fields: 'orderId stage updatedAt expectedDate' },
     delay:       { name: '納期遅延通知', from: 'factory', fields: 'orderId reason expectedDate' },
+    delayFollowup: { name: '遅延対応申し送り', from: 'sales', fields: 'orderId owner customerContacted handoff updatedAt', internal: true },
     finish:      { name: '製造完了報告', from: 'factory', fields: 'orderId requestId completedDate goodQuantity shortageQuantity' }
   };
   for (const definition of Object.values(interfaces)) {
@@ -23,7 +25,7 @@
   const optionalFields = ['comment', 'confirmedDueDate', 'reason'];
   const positiveFields = ['quantity', 'version'];
   const countFields = ['goodQuantity', 'shortageQuantity'];
-  const dateFields = ['dueDate', 'confirmedDueDate', 'responseDueDate', 'expectedDate', 'completedDate'];
+  const dateFields = ['dueDate', 'confirmedDueDate', 'responseDueDate', 'expectedDate', 'completedDate', 'receivedAt'];
 
   function requireThat(condition, message) {
     if (!condition) throw new Error(message);
@@ -76,6 +78,12 @@
       requireThat(/^\d{4}-\d{2}-\d{2}T/.test(event.updatedAt) &&
         !isNaN(Date.parse(event.updatedAt)), '更新日時が不正です。');
     }
+    if (event.type === 'delayFollowup') {
+      requireThat(/^\d{4}-\d{2}-\d{2}T/.test(event.updatedAt) &&
+        !isNaN(Date.parse(event.updatedAt)), '更新日時が不正です。');
+      requireThat(['連絡済み', '未連絡'].includes(event.customerContacted),
+        '顧客への連絡状況が不正です。');
+    }
   }
 
   function availableOrder(order) {
@@ -93,8 +101,9 @@
       state.orders.set(event.orderId, {
         id: event.orderId, originalRequestId: event.requestId, product: event.product,
         paper: event.paper, quantity: Number(event.quantity), dueDate: event.dueDate,
-        source: event.source, approved: false, cancelled: false, progress: '', progressAt: '',
-        expectedDate: '', delayReason: '', goodQuantity: 0, initialFinished: false, proofStatus: ''
+        approved: false, cancelled: false, progress: '', progressAt: '',
+        expectedDate: '', delayReason: '', goodQuantity: 0, initialFinished: false, proofStatus: '',
+        customerContacted: false, delayFollowups: []
       });
     } else {
       requireThat(order, '該当する注文がありません。先行するCSVを読み込んでください。');
@@ -105,13 +114,28 @@
       if (event.type !== 'order') {
         requireThat(availableOrder(order), '承認済みで有効な注文を選んでください。');
       }
-      state.requests.set(event.requestId, { ...event, answer: '', finished: false, targetQuantity: Number(event.quantity || 0) });
+      state.requests.set(event.requestId, {
+        ...event, answer: '', received: false, receivedAt: '', finished: false,
+        targetQuantity: Number(event.quantity || 0)
+      });
+      return;
+    }
+
+    if (event.type === 'received') {
+      requireThat(request && request.orderId === order.id && request.type === 'order',
+        '該当する製造依頼がありません。');
+      requireThat(!request.received, 'この製造依頼は受信確認済みです。');
+      request.received = true;
+      request.receivedAt = event.receivedAt;
       return;
     }
 
     if (event.type === 'reply') {
       requireThat(request && request.orderId === order.id && !request.answer, '該当する未回答の依頼がありません。');
       const approved = event.decision === '承認';
+      if (approved && request.type === 'order') {
+        requireThat(request.received, '承認前に製造部の受信確認が必要です。');
+      }
       if (approved && request.type !== 'order') {
         requireThat(availableOrder(order), 'キャンセル済みの注文は承認できません。');
       }
@@ -162,6 +186,13 @@
       case 'delay':
         order.delayReason = event.reason;
         order.expectedDate = event.expectedDate;
+        break;
+      case 'delayFollowup':
+        requireThat(order.delayReason, '遅延通知を受け取った注文のみ申し送りできます。');
+        requireThat(event.customerContacted === '連絡済み' || event.customerContacted === '未連絡',
+          '顧客への連絡状況が不正です。');
+        order.customerContacted = event.customerContacted === '連絡済み';
+        order.delayFollowups.push(event);
         break;
       case 'finish':
         requireThat(request && request.orderId === order.id && ['order', 'additional'].includes(request.type) &&
@@ -274,6 +305,7 @@
   }
 
   function exportExchange(type, events) {
+    requireThat(!interfaces[type]?.internal, '社内記録は相手部署へ書き出せません。');
     return encodeCsv([['eventId', 'type', ...interfaces[type].fields], ...events.map(eventValues)]);
   }
 
@@ -282,7 +314,8 @@
     requireThat(rows.length, 'CSVにデータ行がありません。');
     const type = rows[0][1];
     const definition = Object.hasOwn(interfaces, type) && interfaces[type];
-    requireThat(definition && definition.from !== receivingDepartment, '相手部署から受信する種類のCSVを選んでください。');
+    requireThat(definition && !definition.internal && definition.from !== receivingDepartment,
+      '相手部署から受信する種類のCSVを選んでください。');
     const expected = ['eventId', 'type', ...definition.fields];
     requireThat(JSON.stringify(header) === JSON.stringify(expected), 'CSVの見出しが仕様と一致しません。');
     return rows.map((row, index) => {

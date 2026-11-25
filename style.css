@@ -24,6 +24,7 @@ h2 { margin: 0 0 .7rem; font-size: 1.15rem; }
 p { margin: .45rem 0; }
 .workspace { display: grid; grid-template-columns: 3fr 2fr; gap: 1rem; align-items: start; }
 #fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin: .8rem 0; }
+.copy-source { grid-column: 1 / -1; }
 label { display: grid; gap: .3rem; font-weight: 600; font-size: .95rem; }
 input, select, textarea, button { font: inherit; }
 input, select, textarea { width: 100%; min-width: 0; border: 1px solid #92a6a4; border-radius: 4px; background: white; padding: .45rem; color: inherit; }
@@ -49,6 +50,8 @@ td { overflow-wrap: anywhere; }
 td:first-child, td:last-child { min-width: 5rem; }
 .empty { text-align: center; padding: 1rem; color: #486062; }
 .count { margin-left: .6rem; color: #486062; font-size: .9rem; font-weight: normal; }
+.filter-control { display: flex; align-items: center; width: fit-content; gap: .45rem; margin-bottom: .7rem; }
+.filter-control input { width: 1.1rem; height: 1.1rem; margin: 0; }
 summary { cursor: pointer; }
 dl { display: grid; grid-template-columns: max-content minmax(6rem, 1fr); gap: .15rem .65rem; margin: .5rem 0 0; }
 dd { margin: 0; white-space: pre-wrap; }
@@ -59,4 +62,13 @@ dd { margin: 0; white-space: pre-wrap; }
 @media (max-width: 460px) {
   #fields { grid-template-columns: 1fr; }
   #csv-types { columns: 1; }
+}
+
+.copy-order-id {
+  border: none;
+  background: none;
+  color: #2563eb;
+  cursor: pointer;
+  text-decoration: underline;
+  font: inherit;
 }
